@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+
+  <!-- iPhone PWA (ホーム画面追加) -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="My Dashboard" />
+
+  <!-- アイコン（必要なら同名ファイルを置き換え） -->
+  <link rel="icon" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+
+  <title>My Dashboard PWA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+  <main class="max-w-md mx-auto px-4 pb-10 pt-safe">
+    <header class="pt-6 pb-4">
+      <h1 class="text-2xl font-semibold tracking-tight">My Dashboard</h1>
+      <p id="currentClock" class="text-5xl font-bold tracking-tight mt-2">--:--:--</p>
+      <p id="nowText" class="text-sm text-gray-500 mt-1"></p>
+    </header>
+
+    <!-- Dynamic Timetable -->
+    <section class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-semibold">電車</h2>
+        <span id="stationLabel" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600"></span>
+      </div>
+      <div id="nextTrainLarge" class="text-4xl font-bold leading-tight">--:--</div>
+      <div id="nextTrainKind" class="mt-1 text-sm text-gray-600">--</div>
+      <div class="mt-1 text-sm text-gray-500">次の出発</div>
+
+      <div class="mt-4 p-3 rounded-xl bg-blue-50 border border-blue-100">
+        <div id="leaveHomeLabel" class="text-xs text-blue-600">家を出る時間（15分前）</div>
+        <div id="leaveHomeTime" class="text-2xl font-bold text-blue-700">--:--</div>
+      </div>
+
+      <div class="mt-4">
+        <div class="text-sm font-medium mb-2">このあと</div>
+        <ul id="nextTrainList" class="space-y-1 text-sm text-gray-700"></ul>
+      </div>
+    </section>
+
+    <!-- Weather -->
+    <section class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+      <h2 class="text-lg font-semibold mb-3">天気</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-xl bg-gray-50 p-3 border border-gray-100">
+          <div class="text-sm text-gray-500">取手市</div>
+          <div id="weatherToride" class="text-xl font-semibold mt-1">--</div>
+        </div>
+        <div class="rounded-xl bg-gray-50 p-3 border border-gray-100">
+          <div class="text-sm text-gray-500">荒川区</div>
+          <div id="weatherArakawa" class="text-xl font-semibold mt-1">--</div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-3">Open-Meteo / 自動更新: 10分ごと</p>
+    </section>
+
+    <!-- Weekly Timetable -->
+    <section class="bg-white rounded-2xl shadow-sm p-4 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">時間割</h2>
+        <span id="weekdayLabel" class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600"></span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-gray-500 border-b">
+              <th class="py-2 pr-2">時限</th>
+              <th class="py-2">科目</th>
+            </tr>
+          </thead>
+          <tbody id="classTableBody"></tbody>
+        </table>
+      </div>
+
+      <details class="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+        <summary class="cursor-pointer text-sm font-medium text-gray-700">時間割を編集</summary>
+        <div class="mt-3 space-y-2">
+          <select id="editDay"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="1">月曜日</option>
+            <option value="2">火曜日</option>
+            <option value="3">水曜日</option>
+            <option value="4">木曜日</option>
+            <option value="5">金曜日</option>
+            <option value="6">土曜日</option>
+            <option value="0">日曜日</option>
+          </select>
+
+          <input id="slot1" type="text" placeholder="1・2限"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+          <input id="slot2" type="text" placeholder="3・4限"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+          <input id="slot3" type="text" placeholder="5・6限"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+          <input id="slot4" type="text" placeholder="7・8限"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+          <input id="slot5" type="text" placeholder="9・10限"
+            class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="loadScheduleBtn" type="button"
+              class="rounded-xl border border-gray-300 bg-white text-sm py-2">読込</button>
+            <button id="saveScheduleBtn" type="button"
+              class="rounded-xl bg-gray-900 text-white text-sm py-2">保存</button>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Task Manager -->
+    <section class="bg-white rounded-2xl shadow-sm p-4 mb-6">
+      <h2 class="text-lg font-semibold mb-3">タスク</h2>
+
+      <form id="taskForm" class="space-y-2">
+        <input id="taskTitle" type="text" required placeholder="タスク名"
+          class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+
+        <div class="grid grid-cols-2 gap-2">
+          <select id="taskPriority"
+            class="rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200">
+            <option value="">重要度（任意）</option>
+            <option value="Low">Low</option>
+            <option value="Mid">Mid</option>
+            <option value="High">High</option>
+          </select>
+          <input id="taskDue" type="datetime-local"
+            class="rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200" />
+        </div>
+
+        <button type="submit"
+          class="w-full rounded-xl bg-gray-900 text-white text-sm py-2.5 active:scale-[0.99] transition">
+          追加
+        </button>
+      </form>
+
+      <ul id="taskList" class="mt-4 space-y-2"></ul>
+    </section>
+  </main>
+
+  <script>
+    // =============================
+    // 1) 書き換えやすい時刻表データ
+    // =============================
+    // 藤代駅 平日時刻表
+    const fujishiroWeekday = [
+      "05:41", "06:06(上)", "06:35", "06:52(上)", "07:00", "07:06(上)", "07:21", "07:32(上)", "07:40", "07:50(上)", "07:57",
+      "08:07(上)", "08:25", "08:41", "09:01", "09:19(特)", "09:28", "09:50", "10:10(上)", "10:19(特)", "10:32", "10:49",
+      "11:15", "11:32", "11:54", "12:16", "12:33", "12:54", "13:16", "13:33", "13:54", "14:16", "14:33", "14:54",
+      "15:16", "15:30", "15:56", "16:13(上)", "16:29", "16:48(上)", "17:02", "17:21(上)", "17:32", "17:48(上)",
+      "18:10", "18:25(上)", "18:39", "18:56(上)", "19:12", "19:21(上)", "19:42", "19:57", "20:18(上)", "20:31", "20:56(上)",
+      "21:18", "21:43", "22:02(上)", "22:26(上)", "22:42(上)", "23:04(上)", "23:45(我)"
+    ];
+
+    // 藤代駅 土日祝時刻表
+    const fujishiroWeekend = [
+      "05:41", "06:06(上)", "06:35", "06:52(上)", "07:04(上)", "07:27", "07:40(上)", "07:54", "08:06", "08:25", "08:39", "08:47",
+      "09:02(◆)", "09:19(特)", "09:36", "09:50", "10:10(上)", "10:19(特)", "10:32", "10:49", "11:15", "11:32", "11:54",
+      "12:16", "12:33", "12:54", "13:16", "13:33", "13:54", "14:16", "14:33", "14:54", "15:16(◆)", "15:31", "15:53",
+      "16:13(上)", "16:29", "16:48(上◆)", "17:02", "17:21(上)", "17:32", "17:49(上◆)", "18:12", "18:22(◆)", "18:25(上◆)", "18:39(◆)", "18:56(上)",
+      "19:12", "19:21(上)", "19:42", "19:57", "20:18(上)", "20:31", "20:56(上)", "21:18", "21:43", "22:02(上)", "22:26(上)", "22:42(上)",
+      "23:04(上)", "23:45(我)"
+    ];
+
+    // 南千住駅 平日時刻表
+    const minamiSenjuWeekday = [
+      "04:42,快速,取手", "05:11,快速,取手", "05:19,普通,日立", "05:39,快速,取手", "05:59,快速,取手",
+      "06:12,普通,高萩", "06:21,快速,取手", "06:30,快速,取手", "06:39,普通,勝田", "06:49,快速,取手",
+      "07:00,普通,勝田", "07:02,快速,取手", "07:11,普通◆,水戸", "07:18,快速,取手", "07:24,快速,成田", "07:32,普通,勝田", "07:41,快速,取手", "07:49,普通,土浦", "07:58,快速,取手",
+      "08:06,普通,土浦", "08:14,快速,取手", "08:23,普通,勝田", "08:33,快速,取手", "08:44,普通,土浦", "08:47,快速,成田", "08:57,普通,勝田",
+      "09:04,快速,取手", "09:15,普通,土浦", "09:20,快速,取手", "09:28,快速,取手", "09:33,普通,土浦", "09:43,快速,成田", "09:53,快速,取手",
+      "10:03,普通,土浦", "10:16,普通,土浦", "10:24,快速,取手", "10:28,快速,松戸", "10:42,普通,土浦", "10:47,快速,成田",
+      "11:00,普通,土浦", "11:11,快速,取手", "11:21,普通,土浦", "11:30,快速,取手", "11:42,普通,土浦", "11:50,快速,成田",
+      "12:00,普通,土浦", "12:11,快速,取手", "12:21,普通,土浦", "12:30,快速,取手", "12:41,普通,土浦", "12:50,快速,成田",
+      "13:00,普通,土浦", "13:11,快速,取手", "13:21,普通,土浦", "13:30,快速,取手", "13:42,普通,土浦", "13:50,快速,成田",
+      "14:00,普通,土浦", "14:11,快速,取手", "14:21,普通,水戸", "14:30,快速,取手", "14:42,普通,勝田", "14:50,快速,成田",
+      "15:00,普通,水戸", "15:10,快速,取手", "15:22,普通,勝田", "15:30,快速,取手", "15:42,普通,土浦", "15:50,快速,成田",
+      "16:00,普通,高萩", "16:10,快速,取手", "16:22,普通,水戸", "16:32,快速,取手", "16:42,普通,土浦", "16:50,快速,取手",
+      "17:00,普通,高萩", "17:10,快速,取手", "17:21,普通,勝田", "17:31,快速,取手", "17:41,快速,取手", "17:47,普通◆,勝田", "17:55,快速,取手",
+      "18:03,普通◆,勝田", "18:11,快速,成田", "18:18,普通◆,水戸", "18:23,快速,取手", "18:30,普通,土浦", "18:34,快速,取手", "18:43,快速,取手", "18:49,普通,勝田", "18:53,快速,取手", "18:59,快速,成田",
+      "19:03,普通,勝田", "19:12,快速,取手", "19:19,普通,勝田", "19:22,快速,成田", "19:31,普通,土浦", "19:35,快速,取手", "19:46,快速,取手", "19:52,普通,勝田", "19:59,快速,成田",
+      "20:03,普通,土浦", "20:13,快速,取手", "20:20,普通,土浦", "20:28,快速,取手", "20:33,普通,水戸", "20:42,快速,取手", "20:50,普通,土浦", "20:56,快速,成田",
+      "21:04,普通,勝田", "21:15,快速,取手", "21:23,普通,土浦", "21:32,快速,取手", "21:43,普通,勝田", "21:52,快速,取手",
+      "22:03,普通,土浦", "22:10,快速,成田", "22:20,普通,勝田", "22:31,快速,取手", "22:41,普通,土浦", "22:51,快速,取手",
+      "23:01,普通,勝田", "23:10,快速,取手", "23:21,普通,土浦", "23:29,快速,取手", "23:39,快速,取手", "23:51,普通,土浦", "23:57,快速,取手",
+      "00:08,快速,取手", "00:20,快速,我孫子", "00:31,快速,松戸", "00:41,快速,松戸"
+    ];
+
+    // 南千住駅 土日祝時刻表
+    const minamiSenjuWeekend = [
+      "04:42,快速,取手", "05:11,快速,取手", "05:19,普通,日立", "05:39,快速,取手", "05:59,快速,取手",
+      "06:12,普通,高萩", "06:21,快速,取手", "06:31,快速,取手", "06:39,普通,勝田", "06:49,快速,取手",
+      "07:00,普通,勝田", "07:02,快速◆,取手", "07:11,普通◆,水戸", "07:18,快速,取手", "07:24,快速,成田", "07:32,普通,勝田", "07:41,快速,取手", "07:49,普通,土浦", "07:55,快速,取手",
+      "08:04,普通,土浦", "08:10,快速,取手", "08:20,快速,取手", "08:26,快速,取手", "08:32,普通,勝田", "08:43,快速,成田", "08:51,快速,取手", "08:57,普通,勝田",
+      "09:05,快速,取手", "09:14,快速◆,取手", "09:21,普通,土浦", "09:26,快速,取手", "09:33,普通,土浦", "09:42,快速,成田", "09:46,快速,取手", "09:52,普通,土浦",
+      "10:02,快速,取手", "10:17,普通,土浦", "10:21,普通,土浦", "10:25,快速,松戸", "10:32,快速,我孫子", "10:42,普通,土浦", "10:47,快速,成田",
+      "11:00,普通,土浦", "11:11,快速,取手", "11:21,普通,土浦", "11:30,快速,取手", "11:42,普通,土浦", "11:50,快速,成田",
+      "12:00,普通,土浦", "12:11,快速,取手", "12:21,普通,土浦", "12:30,快速,取手", "12:41,普通,土浦", "12:50,快速,成田",
+      "13:00,普通,土浦", "13:11,快速,取手", "13:21,普通,土浦", "13:30,快速,取手", "13:42,普通,土浦", "13:50,快速,成田",
+      "14:00,普通,土浦", "14:11,快速,取手", "14:21,普通,水戸", "14:30,快速,取手", "14:42,普通,勝田", "14:50,快速,成田",
+      "15:00,普通,水戸", "15:10,快速◆,取手", "15:22,普通,勝田", "15:30,快速,取手", "15:42,普通,土浦", "15:50,快速,成田",
+      "16:00,普通,高萩", "16:10,快速,取手", "16:22,普通,水戸", "16:32,快速,成田", "16:42,普通,土浦", "16:50,快速,取手",
+      "17:00,普通,高萩", "17:11,快速,取手", "17:19,普通,勝田", "17:30,快速,取手", "17:42,普通◆,勝田", "17:47,普通◆,勝田", "17:49,快速,取手", "17:55,普通◆,勝田",
+      "18:02,快速,成田", "18:03,普通◆,勝田", "18:11,快速,取手", "18:18,普通◆,水戸", "18:19,普通◆,水戸", "18:27,快速,取手", "18:33,普通,土浦", "18:42,快速,取手", "18:49,普通,勝田", "18:58,快速,取手",
+      "19:03,普通,勝田", "19:11,快速,取手", "19:19,普通,勝田", "19:25,快速,取手", "19:33,普通,土浦", "19:41,快速,取手", "19:50,普通,勝田", "19:58,快速,取手",
+      "20:03,普通,土浦", "20:12,快速,成田", "20:19,普通,土浦", "20:25,快速,取手", "20:33,普通,水戸", "20:41,快速,取手", "20:50,普通,土浦", "20:56,快速,成田",
+      "21:04,普通,勝田", "21:15,快速,取手", "21:24,普通,土浦", "21:33,快速,取手", "21:43,普通,勝田", "21:53,快速,取手",
+      "22:03,普通,土浦", "22:10,快速,成田", "22:20,普通,勝田", "22:31,快速,取手", "22:41,普通,土浦", "22:51,快速,取手",
+      "23:01,普通,勝田", "23:10,快速,取手", "23:21,普通,土浦", "23:29,快速,取手", "23:39,快速,取手", "23:51,普通,土浦", "23:57,快速,取手",
+      "00:08,快速,取手", "00:20,快速,我孫子", "00:31,快速,松戸", "00:41,快速,松戸"
+    ];
+
+    // =============================
+    // 2) 時間割データ（必要に応じて編集）
+    // =============================
+    const SCHEDULE_KEY = "myDashboardWeeklyClassesV2";
+    const periodLabels = ["1・2限", "3・4限", "5・6限", "7・8限", "9・10限"];
+    const defaultWeeklyClasses = {
+      1: ["Web開発", "データベース", "空き", "英語", ""],
+      2: ["アルゴリズム", "UI/UX", "統計", "", ""],
+      3: ["ネットワーク", "プロジェクト演習", "", "", ""],
+      4: ["モバイル開発", "情報セキュリティ", "空き", "", ""],
+      5: ["卒研", "卒研", "", "", ""],
+      6: ["", "", "", "", ""],
+      0: ["", "", "", "", ""]
+    };
+    let weeklyClasses = JSON.parse(JSON.stringify(defaultWeeklyClasses));
+
+    // =============================
+    // 3) 共通ユーティリティ
+    // =============================
+    const $ = (id) => document.getElementById(id);
+
+    function hhmmToMinutes(hhmm) {
+      const [h, m] = hhmm.split(":").map(Number);
+      return h * 60 + m;
+    }
+
+    function parseTrainEntry(entry) {
+      const match = entry.match(/^(\d{2}:\d{2})(?:\(([^)]+)\))?$/);
+      if (!match) return { time: entry, markers: "", minute: -1 };
+      const time = match[1];
+      const markers = match[2] || "";
+      return { time, markers, minute: hhmmToMinutes(time) };
+    }
+
+    function parseMinamiEntry(entry) {
+      const [timeRaw, kindRaw, destinationRaw] = entry.split(",");
+      const time = (timeRaw || "").trim();
+      const kind = (kindRaw || "").trim();
+      const destination = (destinationRaw || "").trim();
+      return {
+        time,
+        kind,
+        destination,
+        minute: /^\d{2}:\d{2}$/.test(time) ? hhmmToMinutes(time) : -1
+      };
+    }
+
+    function describeMarkers(markers) {
+      if (!markers) return "普通（品川行き）";
+      const markerMap = {
+        "上": "上野行き",
+        "我": "我孫子行き",
+        "特": "特別快速",
+        "◆": "特定日のみ"
+      };
+      const unique = [...new Set(markers.split(""))];
+      return unique.map((m) => markerMap[m] || m).join(" / ");
+    }
+
+    const fujishiroReachableDestinations = new Set(["土浦", "勝田", "水戸", "高萩", "日立"]);
+
+    function minutesToHHMM(totalMinutes) {
+      const minsInDay = 24 * 60;
+      let m = totalMinutes % minsInDay;
+      if (m < 0) m += minsInDay;
+      const h = Math.floor(m / 60);
+      const min = m % 60;
+      return String(h).padStart(2, "0") + ":" + String(min).padStart(2, "0");
+    }
+
+    function formatNow(d) {
+      return d.toLocaleString("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+
+    function formatClock(d) {
+      return d.toLocaleTimeString("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      });
+    }
+
+    function normalizeWeeklyClasses(data) {
+      const normalized = {};
+      for (const day of ["0", "1", "2", "3", "4", "5", "6"]) {
+        const arr = Array.isArray(data?.[day]) ? data[day] : [];
+        normalized[day] = periodLabels.map((_, i) => String(arr[i] || "").trim());
+      }
+      return normalized;
+    }
+
+    function loadWeeklyClasses() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(SCHEDULE_KEY) || "null");
+        if (saved) weeklyClasses = normalizeWeeklyClasses(saved);
+      } catch (_) {
+        weeklyClasses = JSON.parse(JSON.stringify(defaultWeeklyClasses));
+      }
+    }
+
+    function saveWeeklyClasses() {
+      localStorage.setItem(SCHEDULE_KEY, JSON.stringify(weeklyClasses));
+    }
+
+    function fillScheduleEditor(day) {
+      const slots = weeklyClasses[String(day)] || ["", "", "", "", ""];
+      $("slot1").value = slots[0] || "";
+      $("slot2").value = slots[1] || "";
+      $("slot3").value = slots[2] || "";
+      $("slot4").value = slots[3] || "";
+      $("slot5").value = slots[4] || "";
+    }
+
+    function setupScheduleEditor() {
+      const daySelect = $("editDay");
+      daySelect.value = String(new Date().getDay());
+      fillScheduleEditor(daySelect.value);
+
+      $("loadScheduleBtn").addEventListener("click", () => {
+        fillScheduleEditor(daySelect.value);
+      });
+
+      $("saveScheduleBtn").addEventListener("click", () => {
+        weeklyClasses[String(daySelect.value)] = [
+          $("slot1").value.trim(),
+          $("slot2").value.trim(),
+          $("slot3").value.trim(),
+          $("slot4").value.trim(),
+          $("slot5").value.trim()
+        ];
+        saveWeeklyClasses();
+        renderWeeklyTable();
+      });
+    }
+
+    // =============================
+    // 4) Dynamic Timetable
+    //    13:00未満: 藤代 / 13:00以降: 南千住
+    // =============================
+    function renderDynamicTrain() {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+
+      const day = now.getDay();
+      const isWeekend = day === 0 || day === 6;
+      const isBefore13 = now.getHours() < 13;
+      const stationName = isBefore13 ? "JR藤代駅" : "JR南千住駅";
+      const parsedTimes = isBefore13
+        ? (isWeekend ? fujishiroWeekend : fujishiroWeekday)
+            .map(parseTrainEntry)
+            .filter((t) => t.minute >= 0)
+            .sort((a, b) => a.minute - b.minute)
+        : (isWeekend ? minamiSenjuWeekend : minamiSenjuWeekday)
+            .map(parseMinamiEntry)
+            .filter((t) => t.minute >= 0)
+            .sort((a, b) => a.minute - b.minute);
+
+      $("stationLabel").textContent = stationName;
+      $("currentClock").textContent = formatClock(now);
+      $("nowText").textContent = formatNow(now);
+
+      let nextIndex = parsedTimes.findIndex((t) => t.minute >= nowMin);
+
+      // 当日分がない場合は翌日の先頭を次便として扱う
+      let nextTrainMin;
+      let isTomorrow = false;
+      if (nextIndex === -1) {
+        nextIndex = 0;
+        nextTrainMin = parsedTimes[0].minute + 24 * 60;
+        isTomorrow = true;
+      } else {
+        nextTrainMin = parsedTimes[nextIndex].minute;
+      }
+
+      const nextTrainText = minutesToHHMM(nextTrainMin);
+      const leaveOffset = isBefore13 ? 15 : 20;
+      const leaveHomeText = minutesToHHMM(nextTrainMin - leaveOffset);
+      const nextTrain = parsedTimes[nextIndex];
+
+      $("nextTrainLarge").textContent = isTomorrow ? `${nextTrainText} (翌日)` : nextTrainText;
+
+      if (isBefore13) {
+        $("nextTrainKind").textContent = nextTrain.markers
+          ? `種別: ${nextTrain.markers} (${describeMarkers(nextTrain.markers)})`
+          : "種別: 無印（普通・品川行き）";
+      } else {
+        const isReachable = fujishiroReachableDestinations.has(nextTrain.destination);
+        if (isReachable) {
+          $("nextTrainKind").textContent = `次発: ${nextTrainText} ${nextTrain.kind} ${nextTrain.destination}行`;
+        } else {
+          let nextReachable = null;
+          let nextReachableTomorrow = false;
+          for (let i = 1; i <= parsedTimes.length; i++) {
+            const idx = (nextIndex + i) % parsedTimes.length;
+            const candidate = parsedTimes[idx];
+            if (fujishiroReachableDestinations.has(candidate.destination)) {
+              nextReachable = candidate;
+              nextReachableTomorrow = (nextIndex + i) >= parsedTimes.length;
+              break;
+            }
+          }
+          const nextReachableText = nextReachable
+            ? `${nextReachable.time}${nextReachableTomorrow ? " (翌日)" : ""} ${nextReachable.kind} ${nextReachable.destination}行`
+            : "本日中の藤代方面はありません";
+          $("nextTrainKind").textContent = `次発: ${nextTrainText} ${nextTrain.kind} ${nextTrain.destination}行（藤代には行きません） / 次の藤代方面: ${nextReachableText}`;
+        }
+      }
+      $("leaveHomeLabel").textContent = isBefore13
+        ? "家を出る時間（15分前）"
+        : "高専を出る時間（20分前）";
+      $("leaveHomeTime").textContent = isTomorrow ? `${leaveHomeText} (翌日)` : leaveHomeText;
+
+      const list = [];
+      for (let i = 0; i < 5; i++) {
+        const idx = (nextIndex + i) % parsedTimes.length;
+        const dayOffset = (nextIndex + i) >= parsedTimes.length ? 1 : (isTomorrow ? 1 : 0);
+        const t = minutesToHHMM(parsedTimes[idx].minute + dayOffset * 24 * 60);
+        list.push({
+          text: t,
+          markers: isBefore13 ? parsedTimes[idx].markers : `${parsedTimes[idx].kind} ${parsedTimes[idx].destination}行`,
+          tomorrow: dayOffset === 1
+        });
+      }
+
+      $("nextTrainList").innerHTML = list
+        .map(item =>
+          `<li class="flex items-center justify-between rounded-lg px-2 py-1 ${item.tomorrow ? 'bg-amber-50 text-amber-700' : 'bg-gray-50'}">
+            <span class="font-medium">${item.text}</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs px-2 py-0.5 rounded-full bg-white border border-gray-200 text-gray-600">${item.markers || "無印"}</span>
+              ${item.tomorrow ? '<span class="text-xs">翌日</span>' : '<span class="text-xs text-gray-400">当日</span>'}
+            </div>
+          </li>`
+        )
+        .join("");
+    }
+
+    // =============================
+    // 5) Weather (Open-Meteo)
+    // =============================
+    function weatherCodeToEmoji(code) {
+      if (code === 0) return "☀️";
+      if ([1, 2].includes(code)) return "🌤️";
+      if (code === 3) return "☁️";
+      if ([45, 48].includes(code)) return "🌫️";
+      if ([51, 53, 55, 56, 57].includes(code)) return "🌦️";
+      if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return "🌧️";
+      if ([71, 73, 75, 77, 85, 86].includes(code)) return "🌨️";
+      if ([95, 96, 99].includes(code)) return "⛈️";
+      return "❓";
+    }
+
+    async function fetchWeather(lat, lon) {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&timezone=Asia%2FTokyo`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("weather fetch failed");
+      const data = await res.json();
+      const temp = data?.current?.temperature_2m;
+      const code = data?.current?.weather_code;
+      return { temp, code };
+    }
+
+    async function renderWeather() {
+      try {
+        const [toride, arakawa] = await Promise.all([
+          fetchWeather(35.89, 140.06),
+          fetchWeather(35.73, 139.78)
+        ]);
+
+        $("weatherToride").textContent = `${weatherCodeToEmoji(toride.code)} ${Math.round(toride.temp)}°C`;
+        $("weatherArakawa").textContent = `${weatherCodeToEmoji(arakawa.code)} ${Math.round(arakawa.temp)}°C`;
+      } catch (e) {
+        $("weatherToride").textContent = "取得失敗";
+        $("weatherArakawa").textContent = "取得失敗";
+      }
+    }
+
+    // =============================
+    // 6) Weekly Timetable
+    // =============================
+    function renderWeeklyTable() {
+      const now = new Date();
+      const day = now.getDay(); // 0=Sun ... 6=Sat
+      const labels = ["日", "月", "火", "水", "木", "金", "土"];
+      $("weekdayLabel").textContent = `${labels[day]}曜日`;
+
+      const items = weeklyClasses[String(day)] || ["", "", "", "", ""];
+      $("classTableBody").innerHTML = items.length
+        ? items.map((subject, idx) => `
+            <tr class="border-b last:border-b-0">
+              <td class="py-2 pr-2 font-medium">${periodLabels[idx]}</td>
+              <td class="py-2">${subject || "ー"}</td>
+            </tr>
+          `).join("")
+        : `<tr><td class="py-3 text-gray-400" colspan="2">授業はありません</td></tr>`;
+    }
+
+    // =============================
+    // 7) Task Manager (LocalStorage)
+    // =============================
+    const TASK_KEY = "myDashboardTasksV1";
+    const priorityScore = { "": 0, Low: 1, Mid: 2, High: 3 };
+    let tasks = [];
+
+    function loadTasks() {
+      try {
+        tasks = JSON.parse(localStorage.getItem(TASK_KEY) || "[]");
+        if (!Array.isArray(tasks)) tasks = [];
+      } catch {
+        tasks = [];
+      }
+    }
+
+    function saveTasks() {
+      localStorage.setItem(TASK_KEY, JSON.stringify(tasks));
+    }
+
+    function sortTasks(list) {
+      return [...list].sort((a, b) => {
+        const dueA = a.due ? new Date(a.due).getTime() : Number.POSITIVE_INFINITY;
+        const dueB = b.due ? new Date(b.due).getTime() : Number.POSITIVE_INFINITY;
+        if (dueA !== dueB) return dueA - dueB; // 期限が近い順
+        return (priorityScore[b.priority] || 0) - (priorityScore[a.priority] || 0); // 重要度高い順
+      });
+    }
+
+    function renderTasks() {
+      const nowTs = Date.now();
+      const sorted = sortTasks(tasks);
+
+      if (!sorted.length) {
+        $("taskList").innerHTML = `<li class="text-sm text-gray-400 py-2">タスクはありません</li>`;
+        return;
+      }
+
+      $("taskList").innerHTML = sorted.map(task => {
+        const dueTs = new Date(task.due).getTime();
+        const hasDue = Boolean(task.due);
+        const isOverdue = hasDue && dueTs < nowTs;
+        const priorityColor = task.priority === "High"
+          ? "bg-red-100 text-red-700"
+          : task.priority === "Mid"
+            ? "bg-amber-100 text-amber-700"
+            : task.priority === "Low"
+              ? "bg-green-100 text-green-700"
+              : "bg-gray-100 text-gray-600";
+
+        return `
+          <li class="rounded-xl border ${isOverdue ? 'border-red-200 bg-red-50' : 'border-gray-100 bg-gray-50'} p-3">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="font-medium">${task.title}</div>
+                <div class="text-xs text-gray-500 mt-1">
+                  期限: ${hasDue ? new Date(task.due).toLocaleString("ja-JP", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : "未設定"}
+                </div>
+              </div>
+              <span class="text-xs px-2 py-1 rounded-full ${priorityColor}">${task.priority || "未設定"}</span>
+            </div>
+            <div class="mt-2 flex justify-end">
+              <button data-id="${task.id}" class="deleteTask text-xs text-gray-500 hover:text-red-600">削除</button>
+            </div>
+          </li>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".deleteTask").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-id");
+          tasks = tasks.filter(t => t.id !== id);
+          saveTasks();
+          renderTasks();
+        });
+      });
+    }
+
+    function setupTaskForm() {
+      $("taskForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const title = $("taskTitle").value.trim();
+        const priority = $("taskPriority").value;
+        const due = $("taskDue").value;
+
+        if (!title) return;
+
+        tasks.push({
+          id: crypto.randomUUID(),
+          title,
+          priority,
+          due: due || ""
+        });
+
+        saveTasks();
+        renderTasks();
+        $("taskForm").reset();
+      });
+    }
+
+    // =============================
+    // 8) 起動
+    // =============================
+    function init() {
+      renderDynamicTrain();
+      loadWeeklyClasses();
+      renderWeeklyTable();
+      setupScheduleEditor();
+      loadTasks();
+      renderTasks();
+      setupTaskForm();
+      renderWeather();
+
+      // 時刻は毎秒更新、天気は10分ごと更新
+      setInterval(renderDynamicTrain, 1000);
+      setInterval(renderWeather, 10 * 60 * 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
